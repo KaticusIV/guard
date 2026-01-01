@@ -1,4 +1,6 @@
+-- =====================
 -- CONFIG
+-- =====================
 local TARGETS = {
   mario64guy = true,
   Arteth = true
@@ -7,43 +9,35 @@ local TARGETS = {
 local MAX_RANGE = 30
 local detector = peripheral.wrap("left")
 
-print("Guard turtle online")
+print("Guard turtle online (NO GPS mode)")
 
--- Save home position
-local homeX, homeY, homeZ = gps.locate(5)
-
-if not homeX then
-  error("GPS not available")
-end
-
-local function distance(x1,y1,z1,x2,y2,z2)
-  return math.sqrt((x1-x2)^2 + (y1-y2)^2 + (z1-z2)^2)
-end
+-- Track distance from home
+local offset = 0
 
 while true do
+  local targetDetected = false
+
   for name,_ in pairs(TARGETS) do
     local player = detector.getPlayer(name)
 
-    if player then
-      local px, py, pz = player.x, player.y, player.z
-      local d = distance(homeX, homeY, homeZ, px, py, pz)
+    if player and player.distance <= MAX_RANGE then
+      targetDetected = true
+      print("Target:", name, "Distance:", math.floor(player.distance))
 
-      if d <= MAX_RANGE then
-        print("Target detected:", name)
-
-        -- VERY simple chase: walk forward and attack
-        turtle.attack()
-        turtle.forward()
+      -- Attack and advance
+      turtle.attack()
+      if turtle.forward() then
+        offset = offset + 1
       end
+      break
     end
   end
 
-  -- If no targets, return home
-  local cx, cy, cz = gps.locate(5)
-  if cx and distance(cx,cy,cz,homeX,homeY,homeZ) > 1 then
+  -- Return home if no targets
+  if not targetDetected and offset > 0 then
     turtle.back()
+    offset = offset - 1
   end
 
-  sleep(0.5)
+  sleep(0.4)
 end
-
